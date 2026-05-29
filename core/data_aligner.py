@@ -144,7 +144,7 @@ class DataAligner:
         try:
             if file_format == 'csv':
                 # 尝试不同的编码
-                encodings = ['utf-8', 'gbk', 'gb2312', 'utf-8-sig']
+                encodings = ['utf-8-sig', 'utf-8', 'gbk', 'gb2312']
                 for encoding in encodings:
                     try:
                         df = pd.read_csv(file_path, encoding=encoding)
@@ -153,6 +153,8 @@ class DataAligner:
                         continue
                 else:
                     raise ValueError("无法识别文件编码，请确保文件是UTF-8或GBK编码")
+                # 清除可能的BOM残留
+                df.columns = [col.lstrip('\ufeff') for col in df.columns]
             else:
                 # Excel文件
                 df = pd.read_excel(file_path)

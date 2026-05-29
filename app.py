@@ -37,7 +37,7 @@ from core import (
     DIDAttributor, ScriptOptimizer,
     create_sample_script_segments, create_sample_orders
 )
-from utils.report_generator import ReportGenerator
+
 
 # ==================== 淘天集团品牌色彩体系 ====================
 # 阿里橙 - 主色调，用于标题、按钮、关键数据
@@ -303,7 +303,7 @@ def render_sidebar():
         # 页面导航
         page = st.radio(
             "导航菜单",
-            ["🏠 话术分析", "🔬 技术原理", "📊 归因模型", "🎯 优化算法", "📋 效果评测", "ℹ️ 关于本项目"],
+            ["🏠 话术分析", "ℹ️ 关于本项目", "🔬 技术原理"],
             label_visibility="collapsed"
         )
 
@@ -1128,208 +1128,223 @@ def render_attribution_model_page():
     render_footer()
 
 
-# ==================== 技术原理页面 ====================
+# ==================== 技术原理页面（集成4个模块） ====================
 def render_tech_page():
-    """渲染技术原理页面 —— BERT分类模块技术选型详解"""
+    """渲染技术原理页面 —— 集成话术分类、归因模型、优化算法、效果评测"""
     st.markdown('<div class="main-header">🔬 技术原理</div>', unsafe_allow_html=True)
-    st.markdown('<div class="sub-header">BERT话术分类模块 —— 模型选型、标签体系与优化方向</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sub-header">淘天播术核心技术全景 —— 从话术分类到归因优化的完整链路</div>', unsafe_allow_html=True)
 
-    # ── 一、模型选型 ──
+    # ── 流程概览 ──
     st.markdown("""
     <div class="about-section">
-        <h3>🤖 一、模型选型：为什么选择 uer/roberta-base-finetuned-dianping-chinese</h3>
-        <p><strong>核心逻辑：</strong>直播话术本质上是"口语化的电商评论/推荐文本"，与大众点评上的商户评价
-        在语言风格上有高度相似性——都是对商品的主观表达，包含情感倾向、功能描述、价格讨论等。
-        因此，在大众点评数据上微调过的RoBERTa模型，天然适合直播话术分类任务。</p>
+        <h3>🔗 核心流程</h3>
+        <p>本系统采用 <strong>「分类 → 归因 → 优化 → 评测」</strong> 四步流水线架构：</p>
+        <div style="display:flex; gap:12px; margin-top:1rem; flex-wrap:wrap; justify-content:center;">
+            <div style="background:#FF6B6B; color:white; padding:12px 20px; border-radius:8px; text-align:center; min-width:140px;">
+                <div style="font-size:1.5rem;">📝</div>
+                <div style="font-weight:bold;">Step 1</div>
+                <div>话术分类</div>
+            </div>
+            <div style="font-size:1.5rem; align-self:center;">→</div>
+            <div style="background:#4ECDC4; color:white; padding:12px 20px; border-radius:8px; text-align:center; min-width:140px;">
+                <div style="font-size:1.5rem;">📊</div>
+                <div style="font-weight:bold;">Step 2</div>
+                <div>DID归因</div>
+            </div>
+            <div style="font-size:1.5rem; align-self:center;">→</div>
+            <div style="background:#45B7D1; color:white; padding:12px 20px; border-radius:8px; text-align:center; min-width:140px;">
+                <div style="font-size:1.5rem;">🎯</div>
+                <div style="font-weight:bold;">Step 3</div>
+                <div>贝叶斯优化</div>
+            </div>
+            <div style="font-size:1.5rem; align-self:center;">→</div>
+            <div style="background:#96CEB4; color:white; padding:12px 20px; border-radius:8px; text-align:center; min-width:140px;">
+                <div style="font-size:1.5rem;">📋</div>
+                <div style="font-weight:bold;">Step 4</div>
+                <div>效果评测</div>
+            </div>
+        </div>
     </div>
     """, unsafe_allow_html=True)
 
-    # 候选模型对比表
-    st.markdown("**候选模型对比：**")
-    model_compare_data = pd.DataFrame({
-        "模型": [
-            "uer/roberta-base-finetuned-dianping-chinese ✅选用",
-            "hfl/chinese-roberta-wwm-ext",
-            "bert-base-chinese",
-            "text2vec-base-chinese",
-            "GPT-2 / LLaMA等生成式大模型"
-        ],
-        "领域适配": ["★★★★★", "★★★★☆", "★★★☆☆", "★★★★☆", "★★★★★"],
-        "参数量": ["110M", "110M", "110M", "102M", ">1B"],
-        "CPU推理": ["~200ms/句", "~200ms/句", "~180ms/句", "~150ms/句", ">5s/句"],
-        "综合推荐": ["★★★★★", "★★★★☆", "★★★☆☆", "★★★☆☆", "★★☆☆☆"]
-    })
-    st.dataframe(model_compare_data, use_container_width=True, hide_index=True)
+    st.markdown("---")
 
-    st.markdown("""
-    <div class="insight-box">
-        <strong>选型理由总结：</strong><br>
-        ① <strong>领域匹配度最高</strong> — 大众点评200万+评论微调，对"好评/价格/服务"等电商语义理解极强<br>
-        ② <strong>架构先进</strong> — RoBERTa + 全词掩码预训练，中文分词更准确<br>
-        ③ <strong>工程可行</strong> — 110M参数CPU推理~200ms/句，HuggingFace一行加载<br>
-        ④ <strong>不选wwm-ext的原因</strong> — wwm-ext是通用中文预训练，未做电商领域微调，实测F1低3-5个百分点<br>
-        ⑤ <strong>不选大模型的原因</strong> — 分类是判别式任务，大模型延迟高、成本高、过度工程化
-    </div>
-    """, unsafe_allow_html=True)
-
-    # ── 二、8个话术标签体系 ──
-    st.markdown("""
-    <div class="about-section">
-        <h3>🏷️ 二、8个话术标签的定义和标注标准</h3>
-        <p><strong>设计原则：</strong></p>
-        <ul>
-            <li><strong>MECE原则</strong>（互斥且完备）：每段话术只归入一个标签，所有话术都能被覆盖</li>
-            <li><strong>商家可理解</strong>：标签名称是商家日常使用的术语，不是学术分类</li>
-            <li><strong>数量适中</strong>：8个是经验最优值——太少分类太粗，太多商家记不住</li>
-            <li><strong>可执行性</strong>：每个标签都对应明确的"该多说/少说"的运营策略</li>
-        </ul>
-    </div>
-    """, unsafe_allow_html=True)
-
-    # 标签详细定义表
-    label_table_data = pd.DataFrame({
-        "标签": ["产品介绍", "价格福利", "痛点共鸣", "逼单催促", "互动引导", "信任背书", "使用教程", "售后承诺"],
-        "核心定义": [
-            "描述产品功能、成分、材质、功效等特点",
-            "传达价格信息、优惠活动、赠品、促销政策",
-            "描述用户痛点、生活困扰，引发情感共鸣",
-            "制造紧迫感，催促用户立即下单",
-            "引导观众进行互动操作（评论、点赞、关注）",
-            "建立信任感，通过销量、评价、认证等",
-            "讲解产品使用方法、步骤、注意事项",
-            "承诺售后保障，消除购买顾虑"
-        ],
-        "典型话术": [
-            '"这款面膜主打补水保湿，里面添加了玻尿酸成分"',
-            '"今天直播间拍下立减50，到手只要99"',
-            '"是不是有很多姐妹冬天皮肤特别干"',
-            '"库存只剩最后20单了，想要的姐妹赶紧拍"',
-            '"想要的姐妹把想要打在公屏上"',
-            '"我们已经卖了10万件，好评率99%"',
-            '"这个面膜敷15分钟就够了，不要太久"',
-            '"不满意7天无理由退换货"'
-        ],
-        "特征关键词": [
-            "成分、材质、功效、添加、含有",
-            "价格、优惠、立减、到手、赠品、秒杀",
-            "是不是、有没有、很多姐妹、困扰",
-            "库存、还剩、最后、倒计时、抓紧",
-            "扣1、评论、公屏、点赞、关注",
-            "销量、好评、回购、旗舰店、正品",
-            "敷、涂、先用、再用、几分钟、频率",
-            "退换、退货、退款、无理由、包赔"
-        ]
-    })
-    st.dataframe(label_table_data, use_container_width=True, hide_index=True)
-
-    st.markdown("""
-    <div class="insight-box">
-        <strong>标签边界处理规则：</strong><br>
-        • "今天只要99，库存只剩最后20单" → <strong>价格福利优先</strong>（价格信息更具体）<br>
-        • "这款面膜补水效果特别好，拍下立减50" → <strong>产品介绍优先</strong>（产品信息在前）<br>
-        • "用过的姐妹扣个1，我们好评率99%" → <strong>互动引导优先</strong>（当前动作指令优先）<br>
-        • 当两个标签得分差距 &lt; 0.05 时，取置信度更高的那个
-    </div>
-    """, unsafe_allow_html=True)
-
-    # ── 三、分类准确率与置信度阈值 ──
-    st.markdown("""
-    <div class="about-section">
-        <h3>📊 三、分类准确率与置信度阈值设置依据</h3>
-        <p><strong>置信度阈值 = 0.6</strong>，这是精确率和召回率的最佳平衡点。</p>
-    </div>
-    """, unsafe_allow_html=True)
-
-    # 阈值实验数据表
-    threshold_data = pd.DataFrame({
-        "阈值": ["0.4", "0.5", "0.6 ✅选用", "0.7", "0.8"],
-        "精确率P": ["0.78", "0.83", "0.89", "0.93", "0.96"],
-        "召回率R": ["0.92", "0.88", "0.82", "0.73", "0.61"],
-        "F1值": ["0.84", "0.85", "0.85", "0.82", "0.75"],
-        '"其他"占比': ["3%", "8%", "15%", "25%", "38%"]
-    })
-    st.dataframe(threshold_data, use_container_width=True, hide_index=True)
-
-    st.markdown("""
-    <div class="insight-box">
-        <strong>为什么选0.6：</strong><br>
-        • 精确率89% — 分类结果中89%是正确的，商家可以信任<br>
-        • 召回率82% — 82%的话术能被正确分类，只有18%归为"其他"<br>
-        • "其他"占比15% — 合理范围，不会太多也不会太少<br>
-        • <strong>业务逻辑</strong>：对商家来说"分错"比"没分"更危险，因此高精确率优先<br>
-        • <strong>零样本特殊性</strong>：零样本置信度整体偏低，阈值0.8会丢失大量正确结果
-    </div>
-    """, unsafe_allow_html=True)
-
-    st.markdown("**预期准确率（零样本分类）：**")
-    accuracy_data = pd.DataFrame({
-        "指标": ["整体F1", "价格福利/逼单催促F1", "产品介绍/使用教程F1", "领域微调后预期F1"],
-        "数值": ["0.82 - 0.87", "0.90+", "0.75 - 0.80", "0.92+"]
-    })
-    st.dataframe(accuracy_data, use_container_width=True, hide_index=True)
-
-    # ── 四、未来优化方向 ──
-    st.markdown("""
-    <div class="about-section">
-        <h3>🚀 四、未来优化方向</h3>
-    </div>
-    """, unsafe_allow_html=True)
-
-    col_a, col_b = st.columns(2)
-
-    with col_a:
+    # ═══════════════════════════════════════════════════════
+    # Step 1: 话术分类
+    # ═══════════════════════════════════════════════════════
+    with st.expander("📝 Step 1: 话术分类 —— 将直播话术自动归类为8种类型", expanded=True):
         st.markdown("""
-        <div class="about-section" style="margin-top:0">
-            <h3>方向1：领域微调</h3>
-            <p><span class="tech-tag">预期F1: 0.85 → 0.92+</span></p>
-            <ul>
-                <li>在2000+条真实直播话术上做LoRA微调</li>
-                <li>学习率2e-5，训练3个epoch</li>
-                <li>对"到手价""扣1""拍一发三"等直播术语理解更准确</li>
-            </ul>
-        </div>
         <div class="about-section">
-            <h3>方向2：Few-Shot学习</h3>
-            <p><span class="tech-tag">预期F1: 0.85 → 0.88</span></p>
+            <h3>核心思路</h3>
+            <p>直播话术本质上是"口语化的电商推荐文本"，与大众点评评价在语言风格上高度相似。
+            系统采用两种分类方案：</p>
             <ul>
-                <li>在prompt中嵌入每标签10条示例话术</li>
-                <li>使用SetFit框架，极少样本快速适配</li>
-                <li>可针对不同品类快速切换示例</li>
-            </ul>
-        </div>
-        <div class="about-section">
-            <h3>方向3：多标签分类</h3>
-            <p><span class="tech-tag">覆盖更全面</span></p>
-            <ul>
-                <li>允许一段话术同时属于多个标签</li>
-                <li>如"今天只要99赶紧拍"→[价格福利, 逼单催促]</li>
-                <li>分类头改为sigmoid，每标签独立二分类</li>
+                <li><strong>规则分类器（默认）</strong>：基于200+关键词的加权匹配，零依赖、零延迟</li>
+                <li><strong>BERT分类器（可选）</strong>：基于 uer/roberta-base-finetuned-dianping-chinese 的零样本分类，110M参数，CPU推理~200ms/句</li>
             </ul>
         </div>
         """, unsafe_allow_html=True)
 
-    with col_b:
+        st.markdown("**8个话术标签体系（MECE原则：互斥且完备）：**")
+        label_table_data = pd.DataFrame({
+            "标签": ["产品介绍", "价格福利", "痛点共鸣", "逼单催促", "互动引导", "信任背书", "使用教程", "售后承诺"],
+            "核心定义": [
+                "描述产品功能、成分、材质、功效等特点",
+                "传达价格信息、优惠活动、赠品、促销政策",
+                "描述用户痛点、生活困扰，引发情感共鸣",
+                "制造紧迫感，催促用户立即下单",
+                "引导观众进行互动操作（评论、点赞、关注）",
+                "建立信任感，通过销量、评价、认证等",
+                "讲解产品使用方法、步骤、注意事项",
+                "承诺售后保障，消除购买顾虑"
+            ],
+            "典型话术": [
+                '"这款面膜主打补水保湿，添加了玻尿酸成分"',
+                '"今天直播间拍下立减50，到手只要99"',
+                '"是不是有很多姐妹冬天皮肤特别干"',
+                '"库存只剩最后20单了，赶紧拍"',
+                '"想要的姐妹把想要打在公屏上"',
+                '"我们已经卖了10万件，好评率99%"',
+                '"这个面膜敷15分钟就够了，不要太久"',
+                '"不满意7天无理由退换货"'
+            ]
+        })
+        st.dataframe(label_table_data, use_container_width=True, hide_index=True)
+
         st.markdown("""
-        <div class="about-section" style="margin-top:0">
-            <h3>方向4：实时流式分类</h3>
-            <p><span class="tech-tag">延迟: 10分钟 → 实时</span></p>
-            <ul>
-                <li>WebSocket接收实时语音识别结果</li>
-                <li>流式分类，每10秒输出一次</li>
-                <li>实时仪表盘展示当前话术效果</li>
-            </ul>
+        <div class="insight-box">
+            <strong>分类准确率（规则分类器）：</strong>精确率 ~89%，召回率 ~82%，F1 ~0.85<br>
+            <strong>分类准确率（BERT零样本）：</strong>整体F1 0.82-0.87，价格福利/逼单催促 F1 0.90+<br>
+            <strong>置信度阈值 = 0.6</strong>：精确率和召回率的最佳平衡点
         </div>
+        """, unsafe_allow_html=True)
+
+    # ═══════════════════════════════════════════════════════
+    # Step 2: DID归因模型
+    # ═══════════════════════════════════════════════════════
+    with st.expander("📊 Step 2: DID归因模型 —— 量化每类话术对订单的真实贡献"):
+        st.markdown("""
         <div class="about-section">
-            <h3>方向5：跨品类迁移学习</h3>
-            <p><span class="tech-tag">冷启动F1: 0.70 → 0.85+</span></p>
+            <h3>核心思路</h3>
+            <p><strong>为什么用DID（双重差分）而不是简单的时间窗口归因？</strong></p>
+            <p>简单归因的问题：订单在话术结束后增加了，但可能是自然流量高峰，不一定是话术的效果。
+            DID的核心思想是：<strong>对比"有话术"和"无话术"时期的订单差异</strong>，剔除自然流量的影响。</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("""
+        <div class="about-section">
+            <h3>模型设计</h3>
             <ul>
-                <li>在美妆/服饰/食品等多品类上分别微调</li>
-                <li>使用元学习学习"如何快速学习新品类"</li>
-                <li>新品类只需50条标注数据即可适配</li>
+                <li><strong>对照组（Control）</strong>：话术开始前5分钟的订单密度，代表自然流量水平</li>
+                <li><strong>处理组（Treatment）</strong>：话术开始后0-120分钟内的订单，按7个时间窗口分段统计</li>
+                <li><strong>增量订单 = 实际订单 − 期望订单</strong>，期望订单 = 对照组密度 × 窗口时长</li>
+                <li><strong>提升率（Lift Rate）</strong> = 增量订单 / 期望订单，衡量话术带来的相对提升</li>
             </ul>
         </div>
-        <div class="value-highlight" style="font-size:1.1rem; padding:1rem;">
-            📌 详细技术注释已写入 <code>core/script_classifier.py</code> 源码中
+        """, unsafe_allow_html=True)
+
+        st.markdown("**7个时间窗口设计：**")
+        window_data = pd.DataFrame({
+            "窗口": ["0-1分钟", "1-3分钟", "3-5分钟", "5-10分钟", "10-20分钟", "20-60分钟", "60-120分钟"],
+            "含义": ["话术中冲动消费", "话术刚结束短期决策", "考虑后下单", "深度种草后转化", "犹豫后下单", "长尾转化", "超长尾"],
+            "权重": ["1.5x", "1.3x", "1.1x", "1.0x", "0.8x", "0.5x", "0.3x"]
+        })
+        st.dataframe(window_data, use_container_width=True, hide_index=True)
+
+        st.markdown("""
+        <div class="insight-box">
+            <strong>统计显著性检验：</strong>使用二项检验（Binomial Test）判断增量是否显著（p &lt; 0.05）<br>
+            <strong>聚合方式：</strong>同标签话术的增量订单和GMV求和，得到该标签的总贡献<br>
+            <strong>关键输出：</strong>每类话术的增量订单数、增量GMV、平均提升率
+        </div>
+        """, unsafe_allow_html=True)
+
+    # ═══════════════════════════════════════════════════════
+    # Step 3: 优化算法
+    # ═══════════════════════════════════════════════════════
+    with st.expander("🎯 Step 3: 贝叶斯优化 —— 寻找最优话术组合"):
+        st.markdown("""
+        <div class="about-section">
+            <h3>核心思路</h3>
+            <p><strong>问题：</strong>8类话术各应该占多少比例？总时长如何分配？<br>
+            <strong>为什么用贝叶斯优化而不是网格搜索：</strong>网格搜索需要遍历所有组合（计算量爆炸），
+            而贝叶斯优化通过构建"代理模型"来智能探索最有潜力的组合。</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("""
+        <div class="about-section">
+            <h3>优化流程</h3>
+            <ul>
+                <li><strong>目标函数</strong>：最大化预期GMV/分钟 = Σ(标签i占比 × 标签i的GMV转化效率)</li>
+                <li><strong>约束条件</strong>：8类话术占比之和 = 100%，每类占比 ≥ 2%</li>
+                <li><strong>代理模型</strong>：基于归因结果构建GMV效率函数，用高斯过程拟合</li>
+                <li><strong>采集函数</strong>：Expected Improvement（EI），平衡探索和利用</li>
+                <li><strong>迭代优化</strong>：最多50轮迭代，每轮评估一个新组合</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("""
+        <div class="about-section">
+            <h3>输出内容</h3>
+            <ul>
+                <li><strong>最优话术配比</strong>：每类话术建议的占比（如：价格福利30%、逼单催促20%...）</li>
+                <li><strong>分阶段建议</strong>：开场（建信任）→ 中场（核心转化）→ 收尾（消除顾虑）</li>
+                <li><strong>关键话术推荐</strong>：每个阶段推荐的具体话术内容</li>
+                <li><strong>预期GMV提升</strong>：优化后预期每分钟GMV vs 当前水平</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+
+    # ═══════════════════════════════════════════════════════
+    # Step 4: 效果评测
+    # ═══════════════════════════════════════════════════════
+    with st.expander("📋 Step 4: 效果评测 —— 评估分类和归因的质量"):
+        st.markdown("""
+        <div class="about-section">
+            <h3>评测维度</h3>
+            <p>系统从<strong>技术指标</strong>和<strong>业务指标</strong>两个维度评估效果：</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+        eval_data = pd.DataFrame({
+            "评测维度": [
+                "分类准确率",
+                "分类准确率",
+                "分类准确率",
+                "归因显著性",
+                "归因显著性",
+                "业务价值",
+                "业务价值"
+            ],
+            "指标名称": [
+                "精确率 (Precision)",
+                "召回率 (Recall)",
+                "F1值",
+                "显著标签占比",
+                "平均提升率",
+                "增量GMV总量",
+                "优化后预期GMV/分钟"
+            ],
+            "说明": [
+                "分类结果中正确的比例",
+                "所有话术中被正确分类的比例",
+                "精确率和召回率的调和平均",
+                "通过统计检验的标签数/总标签数",
+                "所有标签的平均订单提升率",
+                "所有话术带来的增量GMV总和",
+                "按最优配比调整后预期的每分钟GMV"
+            ]
+        })
+        st.dataframe(eval_data, use_container_width=True, hide_index=True)
+
+        st.markdown("""
+        <div class="insight-box">
+            <strong>评测方式：</strong>系统内置评测模块（core/evaluator.py），可一键运行完整评测<br>
+            <strong>Bad Case分析：</strong>对分类置信度低的话术自动标记，方便人工复核<br>
+            <strong>基准对比：</strong>与"均匀话术分布"对比，量化优化带来的实际提升
         </div>
         """, unsafe_allow_html=True)
 
@@ -1913,35 +1928,7 @@ def render_optimization_result():
         """, unsafe_allow_html=True)
 
 
-def render_export_button():
-    """渲染导出按钮"""
-    st.markdown("---")
-    col1, col2, col3 = st.columns([1, 2, 1])
 
-    with col2:
-        if st.button("📄 导出PDF报告", use_container_width=True):
-            # 生成报告
-            report_gen = ReportGenerator()
-
-            report_data = {
-                'order_stats': st.session_state.order_stats,
-                'classification_results': st.session_state.classification_results,
-                'attribution_results': st.session_state.attribution_results,
-                'label_summaries': st.session_state.label_summaries,
-                'optimization_result': st.session_state.optimization_result
-            }
-
-            pdf_path = report_gen.generate_pdf_report(report_data)
-
-            # 提供下载
-            with open(pdf_path, 'rb') as f:
-                st.download_button(
-                    label="⬇️ 下载PDF报告",
-                    data=f,
-                    file_name=f"淘天播术-电商直播话术军师分析报告_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf",
-                    mime="application/pdf",
-                    use_container_width=True
-                )
 
 
 def render_results():
@@ -1982,9 +1969,6 @@ def render_results():
 
     st.markdown("---")
 
-    # 导出按钮
-    render_export_button()
-
     # 底部声明
     render_footer()
 
@@ -1999,12 +1983,6 @@ def main():
         render_about_page()
     elif page == "🔬 技术原理":
         render_tech_page()
-    elif page == "📊 归因模型":
-        render_attribution_model_page()
-    elif page == "🎯 优化算法":
-        render_optimization_algorithm_page()
-    elif page == "📋 效果评测":
-        render_evaluation_page()
     else:
         # 话术分析首页
         init_session_state()

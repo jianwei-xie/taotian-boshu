@@ -367,15 +367,16 @@ class DIDAttributor:
             min_orders_for_valid: 最小订单数，少于这个数认为结果不可靠
             significance_level: 统计显著性水平，默认0.05
         """
-        # 默认7个时间窗口（覆盖冲动消费到长尾流量的全链路）
+        # 默认时间窗口（覆盖话术期间到直播后2小时）
+        # 窗口从话术开始时刻计算，覆盖话术进行中+话术后的转化效果
         self.time_windows = time_windows or [
-            (0, 1),      # 0-1分钟：冲动消费
-            (1, 5),      # 1-5分钟：短期决策
-            (5, 15),     # 5-15分钟：考虑后下单
-            (15, 30),    # 15-30分钟：深度种草
-            (30, 60),    # 30分钟-1小时：犹豫后下单
-            (60, 180),   # 1-3小时：延迟决策
-            (180, 1440)  # 3-24小时：长尾流量
+            (0, 1),      # 0-1分钟：话术进行中，冲动消费
+            (1, 3),      # 1-3分钟：话术刚结束，短期决策
+            (3, 5),      # 3-5分钟：考虑后下单
+            (5, 10),     # 5-10分钟：深度种草后转化
+            (10, 20),    # 10-20分钟：犹豫后下单
+            (20, 60),    # 20分钟-1小时：长尾转化
+            (60, 120),   # 1-2小时：超长尾
         ]
         self.control_window_minutes = control_window_minutes
         self.min_orders_for_valid = min_orders_for_valid
@@ -543,8 +544,10 @@ class DIDAttributor:
         total_treatment_gmv = 0.0
         
         for start_min, end_min in self.time_windows:
-            window_start = script_end + timedelta(minutes=start_min)
-            window_end = script_end + timedelta(minutes=end_min)
+            # treatment窗口从话术开始（而非结束）计算
+            # 这样能捕捉话术进行中产生的订单
+            window_start = script_start + timedelta(minutes=start_min)
+            window_end = script_start + timedelta(minutes=end_min)
             
             # 只统计在合理时间范围内的订单
             window_start = max(window_start, live_start)

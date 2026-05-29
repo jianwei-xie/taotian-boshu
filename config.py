@@ -231,8 +231,8 @@ APP_TITLE = "淘天播术-电商直播话术军师 - 直播话术智能分析系
 APP_SUBTITLE = "上传视频和订单数据，10分钟看懂什么话术最卖货"
 
 # 结果展示数量
-TOP_HIGH_SCRIPTS = 20  # 高转化话术显示前20
-TOP_LOW_SCRIPTS = 10   # 低转化话术显示前10
+TOP_HIGH_SCRIPTS = 10  # 高转化话术显示前10
+TOP_LOW_SCRIPTS = 5   # 低转化话术显示前5
 
 # 图表颜色配置：每个标签一个颜色，保持一致
 LABEL_COLORS = {

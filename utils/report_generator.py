@@ -20,6 +20,22 @@ try:
     from reportlab.pdfbase import pdfmetrics
     from reportlab.pdfbase.ttfonts import TTFont
     HAS_REPORTLAB = True
+
+    # 注册中文字体（Windows系统自带）
+    _CN_FONTS_REGISTERED = False
+    try:
+        _font_paths = [
+            "C:/Windows/Fonts/msyh.ttc",   # 微软雅黑
+            "C:/Windows/Fonts/simsun.ttc",  # 宋体
+            "C:/Windows/Fonts/simhei.ttf",  # 黑体
+        ]
+        for _fp in _font_paths:
+            if os.path.exists(_fp):
+                pdfmetrics.registerFont(TTFont('CNFont', _fp))
+                _CN_FONTS_REGISTERED = True
+                break
+    except Exception:
+        pass
 except ImportError:
     HAS_REPORTLAB = False
 
@@ -68,26 +84,34 @@ class ReportGenerator:
         
         # 准备样式
         styles = getSampleStyleSheet()
+        _cn = 'CNFont' if _CN_FONTS_REGISTERED else 'Helvetica'
+
         title_style = ParagraphStyle(
             'CustomTitle',
             parent=styles['Heading1'],
             fontSize=24,
             textColor=colors.HexColor('#FF6B6B'),
             spaceAfter=30,
-            alignment=1  # 居中
+            alignment=1,  # 居中
+            fontName=_cn
         )
-        
+
         heading_style = ParagraphStyle(
             'CustomHeading',
             parent=styles['Heading2'],
             fontSize=16,
             textColor=colors.HexColor('#333333'),
             spaceAfter=12,
-            spaceBefore=12
+            spaceBefore=12,
+            fontName=_cn
         )
-        
-        normal_style = styles['Normal']
-        normal_style.fontSize = 10
+
+        normal_style = ParagraphStyle(
+            'CustomNormal',
+            parent=styles['Normal'],
+            fontSize=10,
+            fontName=_cn
+        )
         
         # 构建内容
         story = []
@@ -115,7 +139,8 @@ class ReportGenerator:
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#FF6B6B')),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTNAME', (0, 0), (-1, 0), _cn),
+            ('FONTNAME', (0, 1), (-1, -1), _cn),
             ('FONTSIZE', (0, 0), (-1, 0), 12),
             ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
             ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
@@ -150,7 +175,8 @@ class ReportGenerator:
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#4ECDC4')),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTNAME', (0, 0), (-1, 0), _cn),
+            ('FONTNAME', (0, 1), (-1, -1), _cn),
             ('FONTSIZE', (0, 0), (-1, 0), 10),
             ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
             ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
@@ -183,7 +209,8 @@ class ReportGenerator:
                 ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#F7DC6F')),
                 ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
                 ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTNAME', (0, 0), (-1, 0), _cn),
+                ('FONTNAME', (0, 1), (-1, -1), _cn),
                 ('FONTSIZE', (0, 0), (-1, 0), 10),
                 ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
                 ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
