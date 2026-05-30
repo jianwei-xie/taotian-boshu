@@ -33,6 +33,10 @@
 - 分阶段建议：开场、中场、收尾
 - 输出可直接执行的话术比例
 
+## 网页访问（免费Streanmlit功能相当局限，收限于数据包大小，网页版功能较少，如不能上传视频）
+
+https://taotian-boshu-ntxn6bzxi3dprrwghb48rz.streamlit.app/
+
 ## 快速开始
 
 ### 环境要求
@@ -139,23 +143,6 @@ taoyuzhitou/
 
 系统默认配置在 `config.py` 中，一般情况下无需修改：
 
-```python
-# 话术分割参数
-SEGMENT_MIN_DURATION = 10      # 最短10秒
-SEGMENT_MAX_DURATION = 30      # 最长30秒
-
-# 订单时间窗口
-ORDER_TIME_WINDOW_BEFORE = 24  # 直播前24小时
-ORDER_TIME_WINDOW_AFTER = 24   # 直播后24小时
-
-# 分类置信度阈值
-CLASSIFICATION_CONFIDENCE_THRESHOLD = 0.6
-
-# 话术比例约束
-MIN_LABEL_RATIO = 0.05         # 最少5%
-MAX_LABEL_RATIO = 0.40         # 最多40%
-```
-
 ## 注意事项
 
 1. **数据安全**：系统不会保存商家的任何数据，分析完成后自动删除
@@ -182,9 +169,14 @@ A: DID归因方法可以排除自然流量干扰，得到话术的真实效果�
 - 初始版本发布
 - 实现视频处理、话术分类、DID归因、话术优化四大模块
 
-## 联系我们
+## 📬 联系我们
 
-如有问题或建议，欢迎反馈。
+### 开发者
+
+**谢一飞**  
+- 香港中文大学（深圳）数学与应用数学专业
+- 关注AI大模型在电商领域的应用与落地
+- 邮箱：123090667@link.cuhk.edu.cn
 
 ---
 
