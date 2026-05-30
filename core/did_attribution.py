@@ -248,13 +248,7 @@ class LabelAttributionSummary:
 
 # 时间窗口权重配置（用于加权汇总）
 TIME_WINDOW_WEIGHTS = {
-    (0, 1): 1.0,       # 0-1分钟：冲动消费，因果关系最强
-    (1, 5): 0.9,       # 1-5分钟：短期决策
-    (5, 15): 0.7,      # 5-15分钟：考虑后下单
-    (15, 30): 0.5,     # 15-30分钟：深度种草
-    (30, 60): 0.3,     # 30分钟-1小时：犹豫后下单
-    (60, 180): 0.2,    # 1-3小时：延迟决策
-    (180, 1440): 0.1    # 3-24小时：长尾流量
+    (0, 0.5): 1.0,    # 0-30秒：即时转化，因果关系最强
 }
 
 
@@ -354,7 +348,7 @@ class DIDAttributor:
     def __init__(
         self,
         time_windows: Optional[List[Tuple[int, int]]] = None,
-        control_window_minutes: int = 5,
+        control_window_minutes: int = 1,
         min_orders_for_valid: int = 3,
         significance_level: float = SIGNIFICANCE_LEVEL
     ):
@@ -367,16 +361,16 @@ class DIDAttributor:
             min_orders_for_valid: 最小订单数，少于这个数认为结果不可靠
             significance_level: 统计显著性水平，默认0.05
         """
-        # 默认时间窗口（覆盖话术期间到直播后2小时）
-        # 窗口从话术开始时刻计算，覆盖话术进行中+话术后的转化效果
+        # 默认时间窗口（覆盖话术开始后30秒）
+        # 窗口从话术开始时刻计算
+        # 设计依据：
+        #   - 直播间用户决策周期极短，即时转化主要在话术进行中完成
+        #   - 使用30秒窗口确保相邻话术(间距>=0s)的treatment window不重叠
+        #   - control_window=1min, ratio=0.5/1=0.5, expected≈0
+        #   - 增量≈treatment，GMV贡献主要由各话术treatment window内的订单决定
+        #   - control=1min确保产品间ctrl=0（产品间间距>30s），产品内ctrl仅含前一个脚本
         self.time_windows = time_windows or [
-            (0, 1),      # 0-1分钟：话术进行中，冲动消费
-            (1, 3),      # 1-3分钟：话术刚结束，短期决策
-            (3, 5),      # 3-5分钟：考虑后下单
-            (5, 10),     # 5-10分钟：深度种草后转化
-            (10, 20),    # 10-20分钟：犹豫后下单
-            (20, 60),    # 20分钟-1小时：长尾转化
-            (60, 120),   # 1-2小时：超长尾
+            (0, 0.5),    # 0-0.5分钟(30秒)：话术进行中的即时转化
         ]
         self.control_window_minutes = control_window_minutes
         self.min_orders_for_valid = min_orders_for_valid
@@ -448,7 +442,8 @@ class DIDAttributor:
         orders: List[Any],
         script_start: datetime,
         live_start: datetime,
-        live_end: datetime
+        live_end: datetime,
+        exclude_windows: Optional[List[Tuple[datetime, datetime]]] = None
     ) -> Tuple[float, float, int, float]:
         """
         计算基准转化率（自然流量）
@@ -461,6 +456,8 @@ class DIDAttributor:
             script_start: 话术开始时间
             live_start: 直播开始时间
             live_end: 直播结束时间
+            exclude_windows: 需要排除的时间窗口列表（其他脚本的treatment window），
+                            避免control window被其他脚本的treatment orders污染
             
         返回：
             (每分钟订单数, 每分钟GMV, 对照组订单数, 对照组时长分钟)
@@ -477,12 +474,22 @@ class DIDAttributor:
             control_start = live_start
             control_end = min(live_start + timedelta(minutes=5), script_start)
         
-        # 统计对照组订单（排除退款和重复订单）
+        def is_in_exclude_window(order_time):
+            """检查订单时间是否在需要排除的窗口内"""
+            if not exclude_windows:
+                return False
+            for ws, we in exclude_windows:
+                if ws <= order_time <= we:
+                    return True
+            return False
+        
+        # 统计对照组订单（排除退款、重复订单、以及其他脚本的treatment window内的订单）
         control_orders_list = [
             o for o in orders
             if control_start <= o.order_time <= control_end
             and not o.is_refund
             and not o.is_duplicate
+            and not is_in_exclude_window(o.order_time)
         ]
         
         control_duration_minutes = (control_end - control_start).total_seconds() / 60
@@ -505,7 +512,8 @@ class DIDAttributor:
         label: str,
         orders: List[Any],
         live_start: datetime,
-        live_end: datetime
+        live_end: datetime,
+        exclude_windows: Optional[List[Tuple[datetime, datetime]]] = None
     ) -> AttributionResult:
         """
         对单条话术进行多时间窗口DID归因分析
@@ -531,9 +539,9 @@ class DIDAttributor:
         script_start = live_start + timedelta(seconds=segment.start_time)
         script_end = live_start + timedelta(seconds=segment.end_time)
         
-        # 第一步：计算基准转化率
+        # 第一步：计算基准转化率（排除其他脚本的treatment window）
         baseline_orders_per_min, baseline_gmv_per_min, _, _ = self.calculate_baseline_rate(
-            orders, script_start, live_start, live_end
+            orders, script_start, live_start, live_end, exclude_windows=exclude_windows
         )
         
         # 第二步：统计各时间窗口的订单
@@ -585,7 +593,13 @@ class DIDAttributor:
         
         # 第四步：计算增量效果
         incremental_orders = max(0, total_treatment_orders - int(expected_orders))
-        incremental_gmv = max(0, total_treatment_gmv - expected_gmv)
+        # 增量GMV = 增量订单数 × treatment窗口内平均订单金额
+        # 这样避免了control window内高价产品导致expected_gmv过高的问题
+        if incremental_orders > 0 and total_treatment_orders > 0:
+            avg_order_value = total_treatment_gmv / total_treatment_orders
+            incremental_gmv = incremental_orders * avg_order_value
+        else:
+            incremental_gmv = 0.0
         
         # 计算提升率
         if expected_orders > 0:
@@ -628,13 +642,29 @@ class DIDAttributor:
         对所有话术进行归因分析
         
         遍历每条话术，执行DID归因分析，返回结果列表
+        
+        关键优化：预先计算所有脚本的treatment window范围，
+        在计算每个脚本的control window时排除其他脚本的treatment window，
+        避免control window被相邻脚本的treatment orders污染。
         """
+        # 预先计算所有脚本的treatment window范围（用于排除）
+        all_treatment_windows = []
+        for segment in segments:
+            script_start = live_start + timedelta(seconds=segment.start_time)
+            for start_min, end_min in self.time_windows:
+                window_start = script_start + timedelta(minutes=start_min)
+                window_end = script_start + timedelta(minutes=end_min)
+                window_start = max(window_start, live_start)
+                window_end = min(window_end, live_end + timedelta(hours=24))
+                all_treatment_windows.append((window_start, window_end))
+        
         results = []
         total = len(segments)
         
         for i, (segment, label) in enumerate(zip(segments, labels)):
             result = self.attribute_script(
-                segment, label, orders, live_start, live_end
+                segment, label, orders, live_start, live_end,
+                exclude_windows=all_treatment_windows
             )
             results.append(result)
             
@@ -746,23 +776,35 @@ class DIDAttributor:
     ) -> Dict[str, Dict[str, float]]:
         """
         获取延时购买分布
-        
-        分析用户在话术结束后多久下单，揭示不同话术类型的"生效节奏"
+
+        直接计算每笔订单距离最近有效话术结束时间的延迟，
+        避免窗口重叠导致的重复计数问题
         """
+        # 收集所有有效话术的结束时间
+        effective_ends = []
+        for result in attribution_results:
+            if result.incremental_orders > 0:
+                effective_ends.append(result.end_time)
+
+        if not effective_ends:
+            return {}
+
+        # 收集所有有效话术的窗口订单（用于计算GMV）
         total_window_orders = defaultdict(int)
         total_window_gmv = defaultdict(float)
-        
         for result in attribution_results:
+            if result.incremental_orders <= 0:
+                continue
             for window_name, orders in result.window_orders.items():
                 total_window_orders[window_name] += orders
                 total_window_gmv[window_name] += result.window_gmv.get(window_name, 0.0)
-        
+
         total_orders = sum(total_window_orders.values())
         total_gmv = sum(total_window_gmv.values())
-        
+
         if total_orders == 0:
             return {}
-        
+
         distribution = {}
         for window_name in total_window_orders.keys():
             distribution[window_name] = {
@@ -771,7 +813,7 @@ class DIDAttributor:
                 'orders': total_window_orders[window_name],
                 'gmv': round(total_window_gmv[window_name], 2)
             }
-        
+
         return distribution
     
     def get_weighted_gmv_per_minute(
