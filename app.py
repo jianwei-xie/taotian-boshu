@@ -1913,78 +1913,72 @@ def render_optimization_result():
     """渲染优化结果"""
     result = st.session_state.optimization_result
 
-    # ========== 品类适配建议 ==========
-    st.markdown("**🏷️ 品类适配建议：**")
-    st.info("""根据淘天平台数据，不同品类的话术策略应有所侧重：
-- **美妆护肤**：加强信任背书(25%+)和使用教程(5%+)，用户对成分和效果更敏感
-- **服饰鞋包**：加强产品卖点(40%+)和痛点共鸣(8%+)，用户更关注版型和搭配
-- **食品生鲜**：加强价格福利(15%+)和稀缺性逼单(20%+)，决策成本低，冲动消费为主
-- **家电3C**：加强信任背书(25%+)和售后承诺(5%+)，客单价高，决策周期长
-- **日用百货**：均衡分布，适当增加互动留客(6%+)维持流量""")
+    # ========== 核心优化建议（基于计算结果） ==========
+    st.markdown("### 🎯 核心优化建议")
 
+    # 计算实际分布与优化分布的差异
+    label_summaries = st.session_state.label_summaries
+    valid_labels = [k for k in label_summaries.keys() if k != "其他"]
+    total_gmv = sum(label_summaries[k].total_incremental_gmv for k in valid_labels)
+    
+    # 实际分布（百分比）
+    actual_dist = {}
+    for label in valid_labels:
+        actual_dist[label] = label_summaries[label].total_incremental_gmv / total_gmv * 100 if total_gmv > 0 else 0
+    
+    # 优化分布（百分比）
+    optimal_dist = {}
+    for label, ratio in result.optimal_ratio.items():
+        if label != "其他":
+            optimal_dist[label] = ratio * 100
+    
+    # 计算差异（绝对值），按差异大小排序
+    gaps = []
+    for label in valid_labels:
+        if label in optimal_dist:
+            gap = abs(actual_dist.get(label, 0) - optimal_dist[label])
+            gaps.append({
+                'label': label,
+                'actual': actual_dist.get(label, 0),
+                'optimal': optimal_dist[label],
+                'gap': gap,
+                'direction': '增加' if optimal_dist[label] > actual_dist.get(label, 0) else '减少'
+            })
+    
+    # 按差异排序，过滤差值>5%的，取前5个
+    gaps_sorted = sorted([g for g in gaps if g['gap'] > 5], key=lambda x: -x['gap'])[:5]
+    
+    if not gaps_sorted:
+        st.success("✅ 当前话术分布已接近最优配比，无需大幅调整。")
+        return
+    
+    st.markdown("**📊 基于数据分析的优化建议：**")
+    
+    for i, g in enumerate(gaps_sorted, 1):
+        delta = g['gap']
+        direction = g['direction']
+        label = g['label']
+        actual = g['actual']
+        optimal = g['optimal']
+        
+        # 生成量化建议
+        if direction == '增加':
+            advice = f"**{label}**：当前占比{actual:.1f}%，建议提升至{optimal:.1f}%（需增加{delta:.1f}个百分点）"
+        else:
+            advice = f"**{label}**：当前占比{actual:.1f}%，建议降至{optimal:.1f}%（需减少{delta:.1f}个百分点）"
+        
+        st.markdown(f"{i}. {advice}")
+    
+    # 显示预期效果
     st.markdown("---")
-
-    # ========== 原有内容：最优话术组合策略 ==========
-    st.markdown("### 🎯 最优话术组合策略")
-
-    # 显示最优配比
-    st.markdown("**📊 推荐话术配比：**")
-
-    # 创建配比图表（过滤掉"其他"）
-    labels = []
-    ratios = []
-    colors = []
-
-    for label, ratio in sorted(
-        result.optimal_ratio.items(),
-        key=lambda x: x[1],
-        reverse=True
-    ):
-        if label == "其他":  # "其他"只是分类失败，不应显示
-            continue
-        if ratio >= 0.05:  # 只显示占比5%以上的
-            labels.append(label)
-            ratios.append(ratio * 100)
-            colors.append(LABEL_COLORS.get(label, '#BDC3C7'))
-
-    fig = go.Figure(data=[go.Pie(
-        labels=labels,
-        values=ratios,
-        hole=0.4,
-        marker_colors=colors,
-        textinfo='label+percent',
-        textposition='outside'
-    )])
-
-    fig.update_layout(
-        showlegend=False,
-        height=400
-    )
-
-    st.plotly_chart(fig, use_container_width=True)
-
-    # 显示分阶段建议
-    st.markdown("**🎬 分阶段话术策略：**")
-
-    for stage_name, advice in result.stage_advice.items():
-        with st.expander(f"{stage_name}（{advice['duration_minutes']:.0f}分钟）- {advice['description']}"):
-            st.markdown("**建议话术类型：**")
-            for label, ratio in advice['recommended_ratio'].items():
-                duration = advice['recommended_duration'][label]
-                st.markdown(f"- {label}: {ratio*100:.0f}%（约{duration:.0f}分钟）")
-
-            st.markdown("**💡 话术示例：**")
-            for script in advice['key_scripts'][:3]:
-                st.markdown(f"> {script}")
-
-    # 显示关键洞察
-    st.markdown("**🔍 关键洞察：**")
-    for insight in result.insights:
-        st.markdown(f"""
-        <div class="insight-box">
-            {insight}
-        </div>
-        """, unsafe_allow_html=True)
+    st.markdown("**📈 预期优化效果：**")
+    optimal_gpm = result.expected_gmv_per_minute
+    # 计算当前GMV/分钟
+    total_incr_gmv = sum(label_summaries[k].total_incremental_gmv for k in valid_labels)
+    total_duration = sum(label_summaries[k].total_duration for k in valid_labels)
+    current_gpm = total_incr_gmv / (total_duration / 60) if total_duration > 0 else 0
+    lift_pct = (optimal_gpm - current_gpm) / current_gpm * 100 if current_gpm > 0 else 0
+    st.success(f"按建议调整后，预期GMV/分钟从 ¥{current_gpm:.0f} 提升至 ¥{optimal_gpm:.0f}，提升 **{lift_pct:.1f}%**")
 
 
 
