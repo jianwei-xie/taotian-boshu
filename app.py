@@ -35,7 +35,7 @@ from core import (
     VideoProcessor, DataAligner,
     SimpleRuleClassifier,  # 使用规则分类器，速度快
     DIDAttributor, ScriptOptimizer,
-    create_sample_script_segments, create_sample_orders
+    create_sample_script_segments
 )
 
 
@@ -1556,23 +1556,17 @@ def process_video(video_file, progress_bar, status_text):
 def process_orders(order_file, live_start, live_end, progress_bar, status_text):
     """处理订单文件"""
     if order_file is None:
-        # 使用示例数据
-        status_text.text("使用示例订单数据...")
-        orders = create_sample_orders(live_start, num_orders=100)
-        stats = {
-            'total_orders': 100,
-            'valid_orders': 95,
-            'total_amount': 15000.0,
-            'valid_amount': 14250.0,
-            'refund_orders': 3,
-            'duplicate_orders': 2,
-            'live_orders': 70,
-            'live_amount': 10500.0,
-            'delayed_orders': 20,
-            'delayed_amount': 3000.0,
-            'avg_order_amount': 150.0,
-            'warnings': []
-        }
+        # 使用demo_data.csv作为默认示例数据
+        status_text.text("使用示例订单数据(demo_data.csv)...")
+        aligner = DataAligner()
+        
+        def progress_callback(progress, message):
+            progress_bar.progress(min(progress, 0.99))
+            status_text.text(message)
+        
+        orders, stats = aligner.process_orders(
+            'demo_data.csv', live_start, live_end, progress_callback
+        )
         return orders, stats
 
     # 保存上传的文件
